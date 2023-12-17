@@ -1,0 +1,51 @@
+0x00007ff98ef722e0
+
+0x60CC05C0 - 0x60C90000
+0x00007ff98ef722e0 - 0x00007ff98ef70000
+
+0x10747EA0 (LPDIRECTSOUND8)
+0x10747EA4 (*PrimaryBuffer)
+0x10747EA8 ??? some interface ??
+0x10747EAC (*DirectSoundInterface made by PrimaryBuffer->QueryInterace() with 0x102e74a9 (IID_IDirectSoundBuffer8) (REFIID for QueryInterace))
+0x10747EB0 ??? is this an audio thing too ???
+
+////////////// 0x10747EA4 (*PrimaryBuffer) - ACCESS //////////////////////
+
+102E784B - 8B 86 E4020000  - mov eax,[esi+000002E4]   	| Get Release() pointer
+102E785B - 89 BE E4020000  - mov [esi+000002E4],edi 	| Release->()
+102E912A - 89 9D E4020000  - mov [ebp+000002E4],ebx		| Clear with zeros
+696F0671 - 83 23 00 - and dword ptr [ebx],00			| (dsound.dll) CreateSoundBuffer
+696EE026 - 89 08  - mov [eax],ecx						| (dsound.dll) CreateSoundBuffer
+102E740D - 8B 07  - mov eax,[edi]						| 
+102E7428 - 8B 3F  - mov edi,[edi]						|
+102E7499 - 8B 87 E4020000  - mov eax,[edi+000002E4]		|
+
+////////////// 0x10747EA4 (*PrimaryBuffer) - WRITE //////////////////////
+
+102E785B - 89 BE E4020000  - mov [esi+000002E4],edi
+102E912A - 89 9D E4020000  - mov [ebp+000002E4],ebx
+696F0671 - 83 23 00 - and dword ptr [ebx],00			| (dsound.dll) CreateSoundBuffer()
+696EE026 - 89 08  - mov [eax],ecx						| (dsound.dll) CreateSoundBuffer()
+
+////////////// 0x10747EA8 (some IDirectSoundInterface) - ACCESS //////////////////////
+
+ALWAYS RUN:
+	102EC4F0 - 83 BE E8020000 00 - cmp dword ptr [esi+000002E8],00
+	102EC4FB - 8B B6 E8020000  - mov esi,[esi+000002E8]
+
+RUN IN GAMEPLAY, IF GAME IS PAUSED THEN THESE ARE NOT FIRING:
+	102E9CFE - 8B 83 E8020000  - mov eax,[ebx+000002E8]
+	102E9D29 - 8B 83 E8020000  - mov eax,[ebx+000002E8]
+	102E9D51 - 8B 83 E8020000  - mov eax,[ebx+000002E8]
+
+RUN 1-4 TIMES IF GAME STARTED (some initialization stuff?):
+	102E7829 - 8B 86 E8020000  - mov eax,[esi+000002E8]
+	102E7839 - 8B 86 E8020000  - mov eax,[esi+000002E8]
+	102E7845 - 89 BE E8020000  - mov [esi+000002E8],edi
+
+DSOUND.dll:
+	69A94ED8 - 83 21 00 - and dword ptr [ecx],00
+	69A7E026 - 89 08  - mov [eax],ecx
+
+!!!!:
+	102E9130 - 89 9D E8020000  - mov [ebp+000002E8],ebx
