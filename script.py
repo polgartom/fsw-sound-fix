@@ -47,7 +47,7 @@ def save_file(path, data, mode="wb"):
         f.write(data)
     return
 
-def asm_to_bin(asm_str, add_bits_indicator=False):
+def asm_to_bin(asm_str, add_bits_indicator=True):
     if add_bits_indicator:
         asm_str = "bits 32\n" + asm_str
 
@@ -84,7 +84,7 @@ def boba(addr, base = RVA_BASE): # (file) byte offset based on relative address
     if addr < base: return addr
     return (addr - base)
 
-def do_patch(original_bytes, replacement_bytes, offset):
+def do_patch(original_bytes, offset, replacement_bytes):
     return original_bytes[:offset] + replacement_bytes + original_bytes[offset + len(replacement_bytes):]
 
 # /////////////////////////PATCH/////////////////////////////
@@ -93,12 +93,12 @@ dll = read_file(BACKUP_DLL)
 dllbak = dll
 
 # call [ecx] (QueryInterface()) -> call 0x105F836A \ nop
-bin = asm_to_bin("call 0x105F836A-0x102E74AF\n nop\n") # b"\xE8\xB6\x0E\x31\x00\x90"
-dll = do_patch(dll, bin, boba(0x102E74AF))
+bin = asm_to_bin("call 0x105F836A-0x102E74AF\n nop\n", True) # b"\xE8\xB6\x0E\x31\x00\x90"
+dll = do_patch(dll, boba(0x102E74AF), bin)
 
 patch = read_file('./patch.asm', "rt")
-patch = asm_to_bin(patch)
-dll = do_patch(dll, patch, boba(0x105F836A))
+patch = asm_to_bin(patch, add_bits_indicator=False)
+dll = do_patch(dll, boba(0x105F836A), patch)
 
 # //////////////////////////CHECKS///////////////////////////
 
