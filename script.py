@@ -4,10 +4,10 @@ import os
 import subprocess
 import struct
 
-GAME_DIR   = r"K:\SteamLibrary\steamapps\common\Full Spectrum Warrior"
-PATCH_PATH = r"C:\Users\polga\Desktop\FSW Reverse\result.bin"
-BACKUP_DLL = GAME_DIR + "\\FSW.dll.BAK.ORIGINAL"
-TARGET_DLL = GAME_DIR + "\\FSW.dll" 
+GAME_DIR    = "K:/SteamLibrary/steamapps/common/Full Spectrum Warrior"
+# PATCH_FPATH = "./tmp/patch.bin"
+BACKUP_DLL  = GAME_DIR + "\\FSW.dll.BAK.ORIGINAL"
+TARGET_DLL  = GAME_DIR + "\\FSW.dll" 
 
 RVA_BASE = 0x10000000 # relative address base of the .text section of the FSW.dll
 
@@ -27,19 +27,21 @@ def endi_swap(bin):
         r |= ((bin[o]&0xff) << o*8)
     return r
 
-def readfb(path):
-    with open(path, "rb") as f:
+def read_file(path, mode="rb"):
+    with open(path, mode) as f:
         data = f.read()
     return data
-    
-def savefb(path, data):
+
+def save_file(path, data, mode="wb"):
     if os.path.exists(path): os.remove(path)
-    with open(path, "wb") as f:
+    with open(path, mode) as f:
         f.write(data)
     return
 
-def asm_to_bin(asm_str):
-    asm_str = "bits 32\n" + asm_str
+def asm_to_bin(asm_str, add_bits_indicator=False):
+    if add_bits_indicator:
+        asm_str = "bits 32\n" + asm_str
+
     with open("./tmp/nasm_assm.asm", "wt") as f:
         f.write(asm_str)
     cmd = ["nasm.exe", "-Wx", "-Werror=all", "-f bin", "./tmp/nasm_assm.asm"]
@@ -48,7 +50,7 @@ def asm_to_bin(asm_str):
     if process.returncode != 0:
         print(process.stderr)
         exit(1) 
-    return readfb("./tmp/nasm_assm")
+    return read_file("./tmp/nasm_assm")
 
 def binfile_to_asm(bin_filepath):
     cmd = ["ndisasm.exe", "-b32", bin_filepath]
@@ -66,34 +68,39 @@ def binfile_to_asm(bin_filepath):
     return asm_str
 
 def bin_to_asm(bin):
-    savefb("./tmp/nasm_disassm", bin)
+    save_file("./tmp/nasm_disassm", bin)
     return binfile_to_asm("./tmp/nasm_disassm")
 
-# (file) byte offset based on relative address 
-def boba(addr, base = RVA_BASE):
-    assert(addr >= base)
+def boba(addr, base = RVA_BASE): # (file) byte offset based on relative address 
+    if addr < base: return addr
     return (addr - base)
 
 def do_patch(original_bytes, replacement_bytes, offset):
     return original_bytes[:offset] + replacement_bytes + original_bytes[offset + len(replacement_bytes):]
-    
-dll = readfb(BACKUP_DLL)
-patch = readfb(PATCH_PATH)
 
-result = dll
-# result = do_patch(result, b"\xe9\x45\xbe\x30\x00", boba(0x102E74AF)) # ret 0x4 -> jmp (0x30be4a(base)+0x102E74AF(offset))=0x105F836A
+# /////////////////////////PATCH/////////////////////////////
+
+dll = read_file(BACKUP_DLL)
+dllbak = dll
 
 # call [ecx] (QueryInterface()) -> call 0x105F836A \ nop
 bin = asm_to_bin("call 0x105F836A-0x102E74AF\n nop\n") # b"\xE8\xB6\x0E\x31\x00\x90"
-print(bin_to_asm(bin))
-result = do_patch(result, bin, boba(0x102E74AF))
+dll = do_patch(dll, bin, boba(0x102E74AF))
 
-result = do_patch(result, patch, boba(0x105F836A))
+patch = read_file('./patch.asm', "rt")
+patch = asm_to_bin(patch)
+dll = do_patch(dll, patch, boba(0x105F836A))
 
-assert(len(dll) == len(result))
+# //////////////////////////CHECKS///////////////////////////
 
-savefb(TARGET_DLL, result)
+original_dll_hash = hashlib.md5(dllbak).hexdigest()
+patched_dll_hash = hashlib.md5(dll).hexdigest()
+print("\nhash: {} -> {}".format(original_dll_hash, patched_dll_hash))
 
-assert(len(readfb(BACKUP_DLL)) == len(readfb(TARGET_DLL)))
+assert(len(dll) == len(dll))
+
+save_file(TARGET_DLL, dll)
+
+assert(len(read_file(BACKUP_DLL)) == len(read_file(TARGET_DLL)))
 
 print("\nDONE!\n")
