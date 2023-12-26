@@ -1,31 +1,40 @@
-# import shutil
 import hashlib
 import os
 import subprocess
-import struct
 
 GAME_DIR    = "K:/SteamLibrary/steamapps/common/Full Spectrum Warrior"
-# PATCH_FPATH = "./tmp/patch.bin"
 BACKUP_DLL  = GAME_DIR + "\\FSW.dll.BAK.ORIGINAL"
 TARGET_DLL  = GAME_DIR + "\\FSW.dll" 
 
 RVA_BASE = 0x10000000 # relative address base of the .text section of the FSW.dll
 
-# little endian
-def unpack_le_4b(bin):
-    return struct.unpack('>I', bin)[0]
-
-# big endian
-def unpack_be_4b(bin):
-    return struct.unpack('<I', bin)[0]
-
-def endi_swap(bin):
+def bytes_to_dec(barr):
     r = 0
-    blen = len(bin)
+    blen = len(barr)
     for i in range(blen):
         o = blen-1-i
-        r |= ((bin[o]&0xff) << o*8)
+        r |= ( (barr[i] & 0xff) << o*8)
     return r
+
+def dec_to_bytes(dec):
+    return bytearray.fromhex(hex(dec)[2:])
+
+def endi_swap_dec(dec):
+    arr = dec_to_bytes(dec)
+    r = 0
+    blen = len(arr)
+    for i in range(blen):
+        o = blen-1-i
+        r |= ((arr[o]&0xff) << o*8)
+    return r
+
+def endi_swap_bytes(arr):
+    r = bytearray()
+    blen = len(arr)
+    for i in range(blen):
+        o = blen-1-i
+        r.append(arr[o])
+    return bytes(r)
 
 def read_file(path, mode="rb"):
     with open(path, mode) as f:
